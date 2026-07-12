@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.allocation import Allocation
 from app.models.asset import Asset
 from app.models.user import User
-from app.services import notification_service
+from app.services import notification_service, activity_service
 
 
 def _utcnow() -> datetime:

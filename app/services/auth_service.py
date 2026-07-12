@@ -18,6 +18,7 @@ from app.schemas.auth import UserCreate, UserLogin
 from app.services.email_service import send_password_reset_email, send_verification_email
 from app.services.jwt_service import create_access_token, create_refresh_token, decode_token
 from app.services.otp_service import create_otp, verify_otp
+from app.services import activity_service
 
 
 # ---------- helpers ----------
@@ -75,6 +76,7 @@ def signup(db: Session, data: UserCreate) -> User:
 
     otp = create_otp(db, user.id, "email_verification")
     send_verification_email(user.email, user.full_name, otp.code)
+    activity_service.log_activity(db, user.id, "user_signup", "user", user.id, user.email)
     return user
 
 

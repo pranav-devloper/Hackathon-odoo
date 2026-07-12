@@ -1,7 +1,7 @@
-"""Maintenance ticket model (Screen 7, history in Screen 4).
+"""Maintenance ticket model (Screen 7).
 
-The approval workflow (Pending → Approved/Rejected → In Progress → Resolved) and the
-auto asset-status updates land in Phase 4; the table and basic rows are created here.
+Workflow: pending -> approved / rejected -> in_progress -> resolved.
+On approval the asset flips to under_maintenance; on resolution it returns to available.
 """
 from datetime import datetime, timezone
 
@@ -23,8 +23,17 @@ class MaintenanceTicket(Base):
     issue = Column(Text, nullable=False)
     priority = Column(String(20), default="medium", nullable=False)  # low|medium|high|urgent
     status = Column(String(30), default="pending", nullable=False)
+    # pending | approved | rejected | in_progress | resolved
+
     assigned_tech = Column(String(255), nullable=True)
+    rejected_reason = Column(Text, nullable=True)
+    photo_path = Column(String(512), nullable=True)  # optional attached photo (URL/path)
+
+    approved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    assigned_at = Column(DateTime, nullable=True)
+    resolved_at = Column(DateTime, nullable=True)
+
     created_at = Column(DateTime, default=_utcnow, nullable=False)
 
     def __repr__(self) -> str:  # pragma: no cover
-        return f"<MaintenanceTicket asset={self.asset_id}>"
+        return f"<MaintenanceTicket asset={self.asset_id} {self.status}>"

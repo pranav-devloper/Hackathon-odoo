@@ -17,6 +17,7 @@ from app.routes import org
 from app.routes import assets
 from app.routes import allocations
 from app.routes import notifications
+from app.routes import bookings
 
 # Built React SPA output (after `npm run build` in frontend/). When absent the
 # API still works normally; only the SPA routes return a helpful 404.
@@ -73,6 +74,7 @@ app.include_router(assets.router)
 app.include_router(assets.dashboard_router)
 app.include_router(allocations.router)
 app.include_router(notifications.router)
+app.include_router(bookings.router)
 
 
 @app.get("/", tags=["root"])

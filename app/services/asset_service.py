@@ -12,6 +12,7 @@ from app.models.department import Department
 from app.models.allocation import Allocation
 from app.models.user import User
 from app.models.maintenance_ticket import MaintenanceTicket
+from app.services import activity_service
 
 
 def _next_tag(db: Session) -> str:
@@ -21,7 +22,7 @@ def _next_tag(db: Session) -> str:
     return f"AF-{n:04d}"
 
 
-def register_asset(db: Session, data) -> Asset:
+def register_asset(db: Session, data, actor_id: int | None = None) -> Asset:
     if not db.query(AssetCategory).filter(AssetCategory.id == data.category_id).first():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
     if data.department_id is not None:
@@ -44,6 +45,8 @@ def register_asset(db: Session, data) -> Asset:
     db.add(asset)
     db.commit()
     db.refresh(asset)
+    activity_service.log_activity(db, actor_id, "asset_registered", "asset", asset.id,
+                                  f"{asset.asset_tag} {asset.name}")
     return asset
 
 
