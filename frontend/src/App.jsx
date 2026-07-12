@@ -9,6 +9,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Profile from "./pages/Profile";
 import Dashboard from "./pages/Dashboard";
 import Assets from "./pages/Assets";
+import Allocations from "./pages/Allocations";
 import Bookings from "./pages/Bookings";
 import Maintenance from "./pages/Maintenance";
 import Reports from "./pages/Reports";
@@ -18,7 +19,7 @@ import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 // Routes that render their own full-screen shell (no global nav / centered card).
-const FULL_BLEED = ["/dashboard", "/assets", "/bookings", "/maintenance", "/reports", "/settings"];
+const FULL_BLEED = ["/dashboard", "/assets", "/allocations", "/bookings", "/maintenance", "/reports", "/settings"];
 
 function Nav() {
   const { isAuthed, isAdmin, logout } = useAuth();
@@ -62,6 +63,7 @@ const routes = (
     <Route path="/reset-password" element={<ResetPassword />} />
     <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
     <Route path="/assets" element={<ProtectedRoute><Assets /></ProtectedRoute>} />
+    <Route path="/allocations" element={<ProtectedRoute><Allocations /></ProtectedRoute>} />
     <Route path="/bookings" element={<ProtectedRoute><Bookings /></ProtectedRoute>} />
     <Route path="/maintenance" element={<ProtectedRoute><Maintenance /></ProtectedRoute>} />
     <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />

@@ -76,4 +76,41 @@ export const api = {
   },
 
   dashboard: (token) => request("GET", "/dashboard", { token }),
+
+  // ----- Allocations / Returns -----
+  allocations: {
+    list: (params = {}, token) => {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== "" && v != null) qs.set(k, v);
+      });
+      const q = qs.toString();
+      return request("GET", "/allocations" + (q ? "?" + q : ""), { token });
+    },
+    create: (body, token) => request("POST", "/allocations", { body, token }),
+    return: (id, body, token) =>
+      request("POST", `/allocations/${id}/return`, { body, token }),
+  },
+
+  // ----- Transfers -----
+  transfers: {
+    list: (params = {}, token) => {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== "" && v != null) qs.set(k, v);
+      });
+      const q = qs.toString();
+      return request("GET", "/transfers" + (q ? "?" + q : ""), { token });
+    },
+    create: (body, token) => request("POST", "/transfers", { body, token }),
+    approve: (id, token) => request("POST", `/transfers/${id}/approve`, { token }),
+    reject: (id, token) => request("POST", `/transfers/${id}/reject`, { token }),
+  },
+
+  // ----- Notifications -----
+  notifications: {
+    list: (token) => request("GET", "/notifications", { token }),
+    read: (id, token) => request("POST", `/notifications/${id}/read`, { token }),
+    readAll: (token) => request("POST", "/notifications/read-all", { token }),
+  },
 };

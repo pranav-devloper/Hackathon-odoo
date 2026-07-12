@@ -20,5 +20,18 @@ class Settings(BaseSettings):
     # Where verification / reset links point (used in console emails)
     FRONTEND_URL: str = "http://localhost:8000"
 
+    # Email delivery via SMTP. Leave SMTP_HOST / SMTP_USER blank to use DEV
+    # console-only mode (OTPs are printed to the server log). Point these at
+    # any free SMTP resource, e.g.:
+    #   - Mailtrap sandbox:  host=sandbox.smtp.mailtrap.io port=587 user/pass=inbox creds
+    #   - Gmail app password: host=smtp.gmail.com        port=587 user=<you>@gmail.com
+    # Set SMTP_USE_SSL=True for implicit-TLS ports such as 465.
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_USE_SSL: bool = False
+    EMAIL_FROM: str = "AssetFlow <no-reply@assetflow.app>"
+
 
 settings = Settings()

@@ -5,7 +5,7 @@ lands in Phase 2; the table and basic rows are created here so asset history exi
 """
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, Date, DateTime, ForeignKey
 
 from app.database import Base
 
@@ -22,6 +22,9 @@ class Allocation(Base):
     holder_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     expected_return_date = Column(Date, nullable=True)
     status = Column(String(30), default="active", nullable=False)  # active | returned
+    allocated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    condition_notes = Column(Text, nullable=True)  # captured on return (check-in)
+    returned_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=_utcnow, nullable=False)
 
     def __repr__(self) -> str:  # pragma: no cover

@@ -7,8 +7,11 @@ from app.models.asset_category import AssetCategory
 from app.models.asset import Asset
 from app.models.allocation import Allocation
 from app.models.maintenance_ticket import MaintenanceTicket
+from app.models.transfer import Transfer
+from app.models.notification import Notification
 
 __all__ = [
     "Role", "User", "OTP", "RefreshToken",
     "Department", "AssetCategory", "Asset", "Allocation", "MaintenanceTicket",
+    "Transfer", "Notification",
 ]
