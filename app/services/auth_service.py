@@ -23,7 +23,9 @@ from app.services import activity_service
 
 # ---------- helpers ----------
 def _utcnow() -> datetime:
-    # Naive UTC to match datetimes stored in SQLite.
+    # Naive UTC to match datetimes stored in SQLite. `.replace(tzinfo=None)`
+    # also neutralises any tz-aware value read back from the DB, so a stale
+    # row can never trigger a naive-vs-aware comparison error.
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
@@ -124,7 +126,8 @@ def refresh(db: Session, refresh_token: str) -> dict:
                             detail="Invalid token type")
 
     stored = db.query(RefreshToken).filter(RefreshToken.token == refresh_token).first()
-    if not stored or stored.revoked or stored.expires_at < _utcnow():
+    expires_at = stored.expires_at.replace(tzinfo=None) if stored and stored.expires_at.tzinfo else stored.expires_at
+    if not stored or stored.revoked or expires_at < _utcnow():
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail="Refresh token revoked or expired")
 

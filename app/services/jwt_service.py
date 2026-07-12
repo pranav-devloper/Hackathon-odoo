@@ -7,7 +7,11 @@ from app.config import settings
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    # Naive UTC to stay consistent with the rest of the codebase, which stores
+    # all timestamps (OTP / refresh-token expiry, created_at, etc.) as naive UTC
+    # in SQLite. Mixing tz-aware and tz-naive datetimes causes
+    # "can't compare offset-naive and offset-aware datetimes" errors.
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def create_access_token(user_id: int, role: str) -> str:
