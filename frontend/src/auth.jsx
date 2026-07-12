@@ -56,8 +56,7 @@ export function AuthProvider({ children }) {
         // Token invalid/expired: clear it.
         setAccess("");
         setRefresh("");
-        localStorage.removeItem(STORAGE.access);
-        localStorage.removeItem(STORAGE.refresh);
+        clearTokens();
       })
       .finally(() => active && setLoading(false));
     return () => {

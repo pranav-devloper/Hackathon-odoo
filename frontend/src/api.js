@@ -113,4 +113,49 @@ export const api = {
     read: (id, token) => request("POST", `/notifications/${id}/read`, { token }),
     readAll: (token) => request("POST", "/notifications/read-all", { token }),
   },
+
+  // ----- Maintenance (Screen 7) -----
+  maintenance: {
+    list: (token) => request("GET", "/maintenance", { token }),
+    create: (body, token) => request("POST", "/maintenance", { body, token }),
+    approve: (id, token) => request("POST", `/maintenance/${id}/approve`, { token }),
+    reject: (id, body, token) => request("POST", `/maintenance/${id}/reject`, { body, token }),
+    assign: (id, body, token) => request("POST", `/maintenance/${id}/assign`, { body, token }),
+    resolve: (id, token) => request("POST", `/maintenance/${id}/resolve`, { token }),
+  },
+
+  // ----- Audits (Screen 8) -----
+  audits: {
+    list: (token) => request("GET", "/audits/cycles", { token }),
+    get: (id, token) => request("GET", `/audits/cycles/${id}`, { token }),
+    create: (body, token) => request("POST", "/audits/cycles", { body, token }),
+    updateAuditors: (id, body, token) => request("PATCH", `/audits/cycles/${id}`, { body, token }),
+    markItem: (id, itemId, body, token) =>
+      request("PATCH", `/audits/cycles/${id}/items/${itemId}`, { body, token }),
+    discrepancies: (id, token) => request("GET", `/audits/cycles/${id}/discrepancies`, { token }),
+    close: (id, token) => request("POST", `/audits/cycles/${id}/close`, { token }),
+  },
+
+  // ----- Reports (Screen 9) -----
+  reports: {
+    summary: (token) => request("GET", "/reports/summary", { token }),
+    exportRaw: async (section, token) => {
+      const res = await fetch(`/reports/export?section=${encodeURIComponent(section || "all")}`, {
+        headers: token ? { Authorization: "Bearer " + token } : {},
+      });
+      return await res.text();
+    },
+  },
+
+  // ----- Activity log (Screen 10) -----
+  activity: {
+    list: (params = {}, token) => {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v) qs.set(k, v);
+      });
+      const q = qs.toString();
+      return request("GET", "/activity-logs" + (q ? "?" + q : ""), { token });
+    },
+  },
 };

@@ -18,11 +18,14 @@ from app.schemas.auth import UserCreate, UserLogin
 from app.services.email_service import send_password_reset_email, send_verification_email
 from app.services.jwt_service import create_access_token, create_refresh_token, decode_token
 from app.services.otp_service import create_otp, verify_otp
+from app.services import activity_service
 
 
 # ---------- helpers ----------
 def _utcnow() -> datetime:
-    # Naive UTC to match datetimes stored in SQLite.
+    # Naive UTC to match datetimes stored in SQLite. `.replace(tzinfo=None)`
+    # also neutralises any tz-aware value read back from the DB, so a stale
+    # row can never trigger a naive-vs-aware comparison error.
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
@@ -75,6 +78,7 @@ def signup(db: Session, data: UserCreate) -> User:
 
     otp = create_otp(db, user.id, "email_verification")
     send_verification_email(user.email, user.full_name, otp.code)
+    activity_service.log_activity(db, user.id, "user_signup", "user", user.id, user.email)
     return user
 
 
@@ -122,7 +126,8 @@ def refresh(db: Session, refresh_token: str) -> dict:
                             detail="Invalid token type")
 
     stored = db.query(RefreshToken).filter(RefreshToken.token == refresh_token).first()
-    if not stored or stored.revoked or stored.expires_at < _utcnow():
+    expires_at = stored.expires_at.replace(tzinfo=None) if stored and stored.expires_at.tzinfo else stored.expires_at
+    if not stored or stored.revoked or expires_at < _utcnow():
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail="Refresh token revoked or expired")
 

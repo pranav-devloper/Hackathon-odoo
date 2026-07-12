@@ -8,7 +8,7 @@ from app.models.transfer import Transfer
 from app.models.allocation import Allocation
 from app.models.asset import Asset
 from app.models.user import User
-from app.services import allocation_service, notification_service
+from app.services import allocation_service, notification_service, activity_service
 
 
 def _utcnow() -> datetime:
@@ -50,6 +50,8 @@ def request_transfer(db: Session, asset_id: int, to_user_id: int, expected_retur
                                     f"A transfer of {asset.asset_tag} ({asset.name}) to {to_user.full_name} has been requested.")
     notification_service.notify_managers(db, "transfer_requested",
                                          f"Transfer requested: {asset.asset_tag} -> {to_user.full_name}. Awaiting approval.")
+    activity_service.log_activity(db, requested_by, "transfer_requested", "transfer", tr.id,
+                                  f"{asset.asset_tag} -> {to_user.full_name}")
     return tr
 
 
@@ -92,6 +94,8 @@ def approve_transfer(db: Session, transfer_id: int, approver_id: int) -> Transfe
     if tr.from_user_id:
         notification_service.notify(db, tr.from_user_id, "transfer_approved",
                                     f"{asset.asset_tag if asset else 'Asset'} has been transferred to {to_user.full_name if to_user else 'another user'}.")
+    activity_service.log_activity(db, approver_id, "transfer_approved", "transfer", tr.id,
+                                  asset.asset_tag if asset else None)
     return tr
 
 
@@ -105,6 +109,8 @@ def reject_transfer(db: Session, transfer_id: int, approver_id: int) -> Transfer
     asset = db.query(Asset).filter(Asset.id == tr.asset_id).first()
     notification_service.notify(db, tr.requested_by, "transfer_rejected",
                                 f"Your transfer request for {asset.asset_tag if asset else 'the asset'} was rejected.")
+    activity_service.log_activity(db, approver_id, "transfer_rejected", "transfer", tr.id,
+                                  asset.asset_tag if asset else None)
     return tr
 
 

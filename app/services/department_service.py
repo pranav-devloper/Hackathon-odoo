@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.models.department import Department
 from app.models.user import User
 from app.schemas.org import DepartmentCreate, DepartmentUpdate
+from app.services import activity_service
 
 
 def list_departments(db: Session) -> list[Department]:
@@ -18,7 +19,7 @@ def get_department(db: Session, dept_id: int) -> Department:
     return dept
 
 
-def create_department(db: Session, data: DepartmentCreate) -> Department:
+def create_department(db: Session, data: DepartmentCreate, actor_id: int | None = None) -> Department:
     if db.query(Department).filter(Department.name == data.name).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Department name already exists")
     if data.head_id is not None:
@@ -31,6 +32,7 @@ def create_department(db: Session, data: DepartmentCreate) -> Department:
     db.add(dept)
     db.commit()
     db.refresh(dept)
+    activity_service.log_activity(db, actor_id, "department_created", "department", dept.id, dept.name)
     return dept
 
 

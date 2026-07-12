@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.models.asset_category import AssetCategory
 from app.schemas.org import CategoryCreate, CategoryUpdate
+from app.services import activity_service
 
 
 def list_categories(db: Session) -> list[AssetCategory]:
@@ -17,7 +18,7 @@ def get_category(db: Session, cat_id: int) -> AssetCategory:
     return cat
 
 
-def create_category(db: Session, data: CategoryCreate) -> AssetCategory:
+def create_category(db: Session, data: CategoryCreate, actor_id: int | None = None) -> AssetCategory:
     if db.query(AssetCategory).filter(AssetCategory.name == data.name).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Category name already exists")
     cat = AssetCategory(
@@ -29,6 +30,7 @@ def create_category(db: Session, data: CategoryCreate) -> AssetCategory:
     db.add(cat)
     db.commit()
     db.refresh(cat)
+    activity_service.log_activity(db, actor_id, "category_created", "category", cat.id, cat.name)
     return cat
 
 

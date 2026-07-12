@@ -14,12 +14,14 @@ import Bookings from "./pages/Bookings";
 import Maintenance from "./pages/Maintenance";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
+import Audit from "./pages/Audit";
+import Activity from "./pages/Activity";
 import Placeholder from "./pages/Placeholder";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 // Routes that render their own full-screen shell (no global nav / centered card).
-const FULL_BLEED = ["/dashboard", "/assets", "/allocations", "/bookings", "/maintenance", "/reports", "/settings"];
+const FULL_BLEED = ["/dashboard", "/assets", "/allocations", "/bookings", "/maintenance", "/reports", "/audits", "/activity", "/settings"];
 
 function Nav() {
   const { isAuthed, isAdmin, logout } = useAuth();
@@ -67,6 +69,8 @@ const routes = (
     <Route path="/bookings" element={<ProtectedRoute><Bookings /></ProtectedRoute>} />
     <Route path="/maintenance" element={<ProtectedRoute><Maintenance /></ProtectedRoute>} />
     <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+    <Route path="/audits" element={<ProtectedRoute><Audit /></ProtectedRoute>} />
+    <Route path="/activity" element={<ProtectedRoute><Activity /></ProtectedRoute>} />
     <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
     <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
     <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />

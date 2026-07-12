@@ -44,8 +44,8 @@ def get_departments(db: Session = Depends(get_db), _=Depends(require_role("admin
 
 
 @router.post("/departments", response_model=DepartmentOut, status_code=status.HTTP_201_CREATED)
-def post_department(data: DepartmentCreate, db: Session = Depends(get_db), _=Depends(require_role("admin"))):
-    return serialize_department(department_service.create_department(db, data))
+def post_department(data: DepartmentCreate, db: Session = Depends(get_db), admin: User = Depends(require_role("admin"))):
+    return serialize_department(department_service.create_department(db, data, admin.id))
 
 
 @router.patch("/departments/{dept_id}", response_model=DepartmentOut)
@@ -60,8 +60,8 @@ def get_categories(db: Session = Depends(get_db), _=Depends(require_role("admin"
 
 
 @router.post("/asset-categories", response_model=CategoryOut, status_code=status.HTTP_201_CREATED)
-def post_category(data: CategoryCreate, db: Session = Depends(get_db), _=Depends(require_role("admin"))):
-    return category_service.create_category(db, data)
+def post_category(data: CategoryCreate, db: Session = Depends(get_db), admin: User = Depends(require_role("admin"))):
+    return category_service.create_category(db, data, admin.id)
 
 
 @router.patch("/asset-categories/{cat_id}", response_model=CategoryOut)
@@ -78,12 +78,12 @@ def get_employees(db: Session = Depends(get_db), _=Depends(require_roles("admin"
 
 
 @router.patch("/employees/{user_id}", response_model=EmployeeOut)
-def patch_employee(user_id: int, data: EmployeeUpdate, db: Session = Depends(get_db), _=Depends(require_role("admin"))):
+def patch_employee(user_id: int, data: EmployeeUpdate, db: Session = Depends(get_db), admin: User = Depends(require_role("admin"))):
     user = employee_service.get_employee(db, user_id)
     if data.role is not None:
-        user = employee_service.set_role(db, user_id, data.role)
+        user = employee_service.set_role(db, user_id, data.role, admin.id)
     if data.department_id is not None:
         user = employee_service.set_department(db, user_id, data.department_id)
     if data.is_active is not None:
-        user = employee_service.set_status(db, user_id, data.is_active)
+        user = employee_service.set_status(db, user_id, data.is_active, admin.id)
     return serialize_employee(user)

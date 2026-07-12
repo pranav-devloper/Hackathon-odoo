@@ -93,4 +93,4 @@ def cancel_booking(
 ):
     """Cancel a booking. Allowed by the requester or any manager."""
     is_manager = bool(me.role and me.role.name in MANAGER_ROLES)
-    return serialize(db, booking_service.cancel_booking(db, booking_id, me.id, is_manager))
+    return serialize(db, booking_service.cancel_booking(db, booking_id, me.id, is_manager, me.id))

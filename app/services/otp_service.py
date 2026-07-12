@@ -42,7 +42,8 @@ def verify_otp(db: Session, user_id: int, code: str, purpose: str) -> bool:
     )
     if not otp:
         return False
-    if otp.expires_at < _utcnow():
+    expires_at = otp.expires_at.replace(tzinfo=None) if otp.expires_at.tzinfo else otp.expires_at
+    if expires_at < _utcnow():
         return False
     if otp.code != code:
         return False

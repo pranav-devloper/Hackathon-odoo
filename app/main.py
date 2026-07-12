@@ -19,7 +19,11 @@ from app.routes import org
 from app.routes import assets
 from app.routes import allocations
 from app.routes import notifications
+from app.routes import bookings
 from app.routes import maintenance
+from app.routes import audits
+from app.routes import reports
+from app.routes import activity
 
 # Built React SPA output (after `npm run build` in frontend/). When absent the
 # API still works normally; only the SPA routes return a helpful 404.
@@ -29,12 +33,6 @@ _FRONTEND_DIST = os.path.abspath(
 
 # Uploaded asset photos / documents, served statically at /media.
 MEDIA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "media"))
-
-# Built React SPA output (after `npm run build` in frontend/). When absent the
-# API still works normally; only the SPA routes return a helpful 404.
-_FRONTEND_DIST = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
-)
 
 
 def seed_roles() -> None:
@@ -62,18 +60,24 @@ def seed_roles() -> None:
 
 
 def migrate_schema() -> None:
-    """Add columns introduced after the first release to existing SQLite DBs.
-
-    `create_all` only creates missing *tables*, so new columns on existing tables
-    are added here defensively. Safe to call every startup (no-ops if present).
-    """
+    """Apply additive schema changes for existing dev databases."""
     inspector = sa_inspect(engine)
     if not inspector.has_table("maintenance_tickets"):
         return
+
+    alters = [
+        ("rejected_reason", "TEXT"),
+        ("resolved_at", "DATETIME"),
+        ("assigned_at", "DATETIME"),
+        ("approved_by", "INTEGER"),
+        ("photo_path", "VARCHAR(512)"),
+        ("resolution", "TEXT"),
+    ]
     existing = {c["name"] for c in inspector.get_columns("maintenance_tickets")}
     with engine.begin() as conn:
-        if "resolution" not in existing:
-            conn.execute(text("ALTER TABLE maintenance_tickets ADD COLUMN resolution TEXT"))
+        for col, ddl in alters:
+            if col not in existing:
+                conn.execute(text(f"ALTER TABLE maintenance_tickets ADD COLUMN {col} {ddl}"))
 
 
 @asynccontextmanager
@@ -101,7 +105,11 @@ app.include_router(assets.router)
 app.include_router(assets.dashboard_router)
 app.include_router(allocations.router)
 app.include_router(notifications.router)
+app.include_router(bookings.router)
 app.include_router(maintenance.router)
+app.include_router(audits.router)
+app.include_router(reports.router)
+app.include_router(activity.router)
 
 # Uploaded asset media (photos / documents), served read-only at /media/*.
 os.makedirs(MEDIA_DIR, exist_ok=True)

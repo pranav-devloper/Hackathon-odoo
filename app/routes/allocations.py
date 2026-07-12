@@ -68,8 +68,8 @@ def post_allocation(data: AllocationCreate, db: Session = Depends(get_db), me: U
 
 
 @router.post("/allocations/{allocation_id}/return", response_model=AllocationOut)
-def return_allocation(allocation_id: int, data: AllocationReturn, db: Session = Depends(get_db), _: User = Depends(require_roles(*MANAGER_ROLES))):
-    alloc = allocation_service.return_allocation(db, allocation_id, data.condition_notes)
+def return_allocation(allocation_id: int, data: AllocationReturn, db: Session = Depends(get_db), me: User = Depends(require_roles(*MANAGER_ROLES))):
+    alloc = allocation_service.return_allocation(db, allocation_id, data.condition_notes, me.id)
     return serialize_allocation(db, alloc)
 
 

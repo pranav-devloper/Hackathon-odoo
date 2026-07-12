@@ -1,35 +1,26 @@
-"""Schemas for maintenance tickets (Screen 7, history in Screen 4).
-
-One ticket tracks a single reported fault against an asset. Tickets move through
-pending -> in_progress -> resolved | rejected. Opening a ticket puts the asset
-Under Maintenance; resolving/rejecting returns it to its prior state.
-"""
+"""Pydantic schemas for maintenance tickets (Screen 7)."""
 from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, Field
 
-# Allowed values — shared with the service so validation lives in one place.
-PRIORITIES = ["low", "medium", "high", "urgent"]
-STATUSES = ["pending", "in_progress", "resolved", "rejected"]
 
-
-class MaintenanceTicketCreate(BaseModel):
+class MaintenanceCreate(BaseModel):
     asset_id: int
-    issue: str = Field(..., min_length=1, max_length=2000)
+    issue: str = Field(..., min_length=1)
     priority: str = "medium"  # low | medium | high | urgent
-    assigned_tech: Optional[str] = Field(None, max_length=255)
+    photo_path: Optional[str] = None
 
 
-class MaintenanceTicketUpdate(BaseModel):
-    # Manager-only. Partial update — only provided fields are applied.
-    status: Optional[str] = None       # pending | in_progress | resolved | rejected
-    priority: Optional[str] = None     # low | medium | high | urgent
-    assigned_tech: Optional[str] = Field(None, max_length=255)
-    resolution: Optional[str] = Field(None, max_length=2000)
+class MaintenanceReject(BaseModel):
+    reason: Optional[str] = None
 
 
-class MaintenanceTicketOut(BaseModel):
+class MaintenanceAssign(BaseModel):
+    tech: str = Field(..., min_length=1)
+
+
+class MaintenanceOut(BaseModel):
     id: int
     asset_id: int
     asset_tag: Optional[str] = None
@@ -40,7 +31,12 @@ class MaintenanceTicketOut(BaseModel):
     priority: str
     status: str
     assigned_tech: Optional[str] = None
+    rejected_reason: Optional[str] = None
     resolution: Optional[str] = None
+    photo_path: Optional[str] = None
+    approved_by: Optional[int] = None
+    assigned_at: Optional[datetime] = None
+    resolved_at: Optional[datetime] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

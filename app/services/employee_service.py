@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.models.user import User
 from app.models.role import Role
 from app.models.department import Department
+from app.services import activity_service
 
 ALLOWED_ROLES = {"user", "department_head", "asset_manager", "admin"}
 
@@ -24,7 +25,7 @@ def get_employee(db: Session, user_id: int) -> User:
     return user
 
 
-def set_role(db: Session, user_id: int, role_name: str) -> User:
+def set_role(db: Session, user_id: int, role_name: str, actor_id: int | None = None) -> User:
     if role_name not in ALLOWED_ROLES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid role")
     user = get_employee(db, user_id)
@@ -34,6 +35,8 @@ def set_role(db: Session, user_id: int, role_name: str) -> User:
     user.role_id = role.id
     db.commit()
     db.refresh(user)
+    activity_service.log_activity(db, actor_id, "role_changed", "user", user.id,
+                                  f"{user.full_name} -> {role_name}")
     return user
 
 
@@ -48,9 +51,11 @@ def set_department(db: Session, user_id: int, department_id: int | None) -> User
     return user
 
 
-def set_status(db: Session, user_id: int, is_active: bool) -> User:
+def set_status(db: Session, user_id: int, is_active: bool, actor_id: int | None = None) -> User:
     user = get_employee(db, user_id)
     user.is_active = is_active
     db.commit()
     db.refresh(user)
+    activity_service.log_activity(db, actor_id, "employee_status_changed", "user", user.id,
+                                  f"{user.full_name} -> {'active' if is_active else 'inactive'}")
     return user

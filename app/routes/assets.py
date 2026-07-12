@@ -54,9 +54,9 @@ def get_assets(
 def post_asset(
     data: AssetCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles("asset_manager", "admin")),
+    me: User = Depends(require_roles("asset_manager", "admin")),
 ):
-    return serialize_asset(asset_service.register_asset(db, data))
+    return serialize_asset(asset_service.register_asset(db, data, me.id))
 
 
 @router.get("/{asset_id}", response_model=AssetDetailOut)

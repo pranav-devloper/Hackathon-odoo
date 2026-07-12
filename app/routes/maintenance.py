@@ -1,15 +1,16 @@
-"""Maintenance ticket routes (Screen 7)."""
+"""Maintenance routes (Screen 7)."""
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.dependencies.roles import require_roles
+from app.models.asset import Asset
 from app.models.user import User
 from app.schemas.maintenance import (
-    MaintenanceTicketCreate, MaintenanceTicketOut, MaintenanceTicketUpdate,
+    MaintenanceCreate, MaintenanceReject, MaintenanceAssign, MaintenanceOut,
 )
 from app.services import maintenance_service
 
@@ -25,63 +26,53 @@ def _name(db: Session, user_id: Optional[int]) -> Optional[str]:
     return u.full_name if u else None
 
 
-def serialize(db: Session, t) -> MaintenanceTicketOut:
-    asset = t.asset
-    return MaintenanceTicketOut(
+def serialize(db: Session, t) -> MaintenanceOut:
+    asset = db.query(Asset).filter(Asset.id == t.asset_id).first()
+    return MaintenanceOut(
         id=t.id, asset_id=t.asset_id,
         asset_tag=asset.asset_tag if asset else None,
         asset_name=asset.name if asset else None,
-        reporter_id=t.reporter_id,
-        reporter_name=_name(db, t.reporter_id),
+        reporter_id=t.reporter_id, reporter_name=_name(db, t.reporter_id),
         issue=t.issue, priority=t.priority, status=t.status,
-        assigned_tech=t.assigned_tech, resolution=t.resolution,
+        assigned_tech=t.assigned_tech, rejected_reason=t.rejected_reason,
+        resolution=t.resolution, photo_path=t.photo_path, approved_by=t.approved_by,
+        assigned_at=t.assigned_at, resolved_at=t.resolved_at,
         created_at=t.created_at,
     )
 
 
-@router.post("", response_model=MaintenanceTicketOut, status_code=201)
-def post_ticket(
-    data: MaintenanceTicketCreate,
-    db: Session = Depends(get_db),
-    me: User = Depends(get_current_user),
-):
-    """Any authenticated user may raise a maintenance request."""
-    return serialize(db, maintenance_service.create_ticket(db, me.id, data))
+@router.post("", response_model=MaintenanceOut, status_code=status.HTTP_201_CREATED)
+def post_maintenance(data: MaintenanceCreate, db: Session = Depends(get_db), me: User = Depends(get_current_user)):
+    """Any authenticated user may raise a maintenance request against an asset."""
+    t = maintenance_service.raise_request(db, data.asset_id, me.id, data.issue, data.priority, data.photo_path)
+    return serialize(db, t)
 
 
-@router.get("", response_model=list[MaintenanceTicketOut])
-def get_tickets(
-    asset_id: Optional[int] = None,
-    status: Optional[str] = None,
-    priority: Optional[str] = None,
-    mine: bool = False,
-    db: Session = Depends(get_db),
-    me: User = Depends(get_current_user),
-):
-    # Managers see everything; employees see only their own tickets by default
-    # (pass mine=true to be explicit, or any filter is ignored for non-managers).
-    is_manager = bool(me.role and me.role.name in MANAGER_ROLES)
-    reporter_id = me.id if (mine or not is_manager) else None
-    return [
-        serialize(db, t)
-        for t in maintenance_service.list_tickets(
-            db, asset_id=asset_id, status_filter=status,
-            priority=priority, reporter_id=reporter_id,
-        )
-    ]
+@router.get("", response_model=list[MaintenanceOut])
+def get_maintenance(db: Session = Depends(get_db), me: User = Depends(get_current_user)):
+    return [serialize(db, t) for t in maintenance_service.list_tickets(db, me)]
 
 
-@router.get("/{ticket_id}", response_model=MaintenanceTicketOut)
-def get_one(ticket_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
-    return serialize(db, maintenance_service.get_ticket(db, ticket_id))
+@router.get("/{ticket_id}", response_model=MaintenanceOut)
+def get_one(ticket_id: int, db: Session = Depends(get_db), me: User = Depends(get_current_user)):
+    return serialize(db, maintenance_service.get_ticket(db, ticket_id, me))
 
 
-@router.patch("/{ticket_id}", response_model=MaintenanceTicketOut)
-def patch_ticket(
-    ticket_id: int,
-    data: MaintenanceTicketUpdate,
-    db: Session = Depends(get_db),
-    _: User = Depends(require_roles(*MANAGER_ROLES)),
-):
-    """Managers update status / priority / tech / resolution."""
-    return serialize(db, maintenance_service.update_ticket(db, ticket_id, data, _.id))
+@router.post("/{ticket_id}/approve", response_model=MaintenanceOut)
+def approve(ticket_id: int, db: Session = Depends(get_db), me: User = Depends(require_roles(*MANAGER_ROLES))):
+    return serialize(db, maintenance_service.approve(db, ticket_id, me))
+
+
+@router.post("/{ticket_id}/reject", response_model=MaintenanceOut)
+def reject(ticket_id: int, data: MaintenanceReject, db: Session = Depends(get_db), me: User = Depends(require_roles(*MANAGER_ROLES))):
+    return serialize(db, maintenance_service.reject(db, ticket_id, me, data.reason))
+
+
+@router.post("/{ticket_id}/assign", response_model=MaintenanceOut)
+def assign(ticket_id: int, data: MaintenanceAssign, db: Session = Depends(get_db), me: User = Depends(require_roles(*MANAGER_ROLES))):
+    return serialize(db, maintenance_service.assign_tech(db, ticket_id, me, data.tech))
+
+
+@router.post("/{ticket_id}/resolve", response_model=MaintenanceOut)
+def resolve(ticket_id: int, db: Session = Depends(get_db), me: User = Depends(require_roles(*MANAGER_ROLES))):
+    return serialize(db, maintenance_service.resolve(db, ticket_id, me))

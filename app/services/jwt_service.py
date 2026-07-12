@@ -1,5 +1,6 @@
 """JWT creation and decoding for access and refresh tokens."""
 from datetime import datetime, timedelta, timezone
+import uuid
 
 import jwt
 
@@ -7,7 +8,11 @@ from app.config import settings
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    # Naive UTC to stay consistent with the rest of the codebase, which stores
+    # all timestamps (OTP / refresh-token expiry, created_at, etc.) as naive UTC
+    # in SQLite. Mixing tz-aware and tz-naive datetimes causes
+    # "can't compare offset-naive and offset-aware datetimes" errors.
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def create_access_token(user_id: int, role: str) -> str:
@@ -26,6 +31,11 @@ def create_refresh_token(user_id: int) -> str:
     payload = {
         "sub": str(user_id),
         "type": "refresh",
+        # Unique id so two refresh tokens issued for the same user at the same
+        # instant encode to *different* JWT strings. Without this, refresh-token
+        # rotation would try to insert a token identical to the (revoked) old
+        # one and hit the UNIQUE constraint on refresh_tokens.token.
+        "jti": str(uuid.uuid4()),
         "exp": expire,
     }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
