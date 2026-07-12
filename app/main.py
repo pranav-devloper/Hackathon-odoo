@@ -6,6 +6,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from sqlalchemy import inspect as sa_inspect, text
 
 from app.config import settings
 from app.database import Base, SessionLocal, engine
@@ -17,6 +19,16 @@ from app.routes import org
 from app.routes import assets
 from app.routes import allocations
 from app.routes import notifications
+from app.routes import maintenance
+
+# Built React SPA output (after `npm run build` in frontend/). When absent the
+# API still works normally; only the SPA routes return a helpful 404.
+_FRONTEND_DIST = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
+)
+
+# Uploaded asset photos / documents, served statically at /media.
+MEDIA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "media"))
 
 # Built React SPA output (after `npm run build` in frontend/). When absent the
 # API still works normally; only the SPA routes return a helpful 404.
@@ -49,10 +61,26 @@ def seed_roles() -> None:
         db.close()
 
 
+def migrate_schema() -> None:
+    """Add columns introduced after the first release to existing SQLite DBs.
+
+    `create_all` only creates missing *tables*, so new columns on existing tables
+    are added here defensively. Safe to call every startup (no-ops if present).
+    """
+    inspector = sa_inspect(engine)
+    if not inspector.has_table("maintenance_tickets"):
+        return
+    existing = {c["name"] for c in inspector.get_columns("maintenance_tickets")}
+    with engine.begin() as conn:
+        if "resolution" not in existing:
+            conn.execute(text("ALTER TABLE maintenance_tickets ADD COLUMN resolution TEXT"))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Create tables and seed roles on startup (create_all strategy).
     Base.metadata.create_all(bind=engine)
+    migrate_schema()
     seed_roles()
     yield
 
@@ -73,6 +101,11 @@ app.include_router(assets.router)
 app.include_router(assets.dashboard_router)
 app.include_router(allocations.router)
 app.include_router(notifications.router)
+app.include_router(maintenance.router)
+
+# Uploaded asset media (photos / documents), served read-only at /media/*.
+os.makedirs(MEDIA_DIR, exist_ok=True)
+app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
 
 
 @app.get("/", tags=["root"])
