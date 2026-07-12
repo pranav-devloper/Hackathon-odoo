@@ -668,3 +668,32 @@ input:focus {
   .dash-grid { grid-template-columns: 1fr; }
   .dash-sidebar { width: 160px; }
 }
+
+/* Timeline calendar (Bookings) */
+.cal-axis { display: flex; padding-left: 116px; margin: 0.75rem 0 0.25rem; }
+.cal-tick {
+  flex: 1; font-size: 0.68rem; color: var(--muted);
+  border-left: 1px solid var(--border); padding-left: 3px; line-height: 1.1;
+}
+.cal-row {
+  display: grid; grid-template-columns: 110px 1fr;
+  align-items: center; gap: 0.75rem; padding: 0.25rem 0;
+}
+.cal-res {
+  font-size: 0.85rem; color: var(--text); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.cal-track {
+  position: relative; height: 30px; background: var(--bg);
+  border-radius: 6px; border: 1px solid var(--border);
+}
+.cal-bar {
+  position: absolute; top: 3px; bottom: 3px; border-radius: 5px;
+  color: #fff; font-size: 0.72rem; display: flex; align-items: center;
+  padding: 0 0.4rem; overflow: hidden; white-space: nowrap; cursor: default;
+}
+.cal-bar.ok { background: linear-gradient(90deg, #16a34a, #15803d); }
+.cal-bar.accent { background: linear-gradient(90deg, var(--accent), #4338ca); }
+.cal-bar.warn { background: linear-gradient(90deg, #f59e0b, #d97706); }
+.cal-bar.danger { background: linear-gradient(90deg, #ef4444, #b91c1c); }
+.cal-bar-label { overflow: hidden; text-overflow: ellipsis; }

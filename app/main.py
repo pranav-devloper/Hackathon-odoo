@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect as sa_inspect, text
 
 from app.config import settings
+from app.core.storage import MEDIA_DIR
 from app.database import Base, SessionLocal, engine
 from app.models import user, role, otp, refresh_token  # noqa: F401  (register models)
 from app.models import department, asset_category, asset, allocation, maintenance_ticket  # noqa: F401
@@ -18,6 +19,7 @@ from app.routes import auth
 from app.routes import org
 from app.routes import assets
 from app.routes import allocations
+from app.routes import bookings
 from app.routes import notifications
 from app.routes import maintenance
 
@@ -26,9 +28,6 @@ from app.routes import maintenance
 _FRONTEND_DIST = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
 )
-
-# Uploaded asset photos / documents, served statically at /media.
-MEDIA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "media"))
 
 # Built React SPA output (after `npm run build` in frontend/). When absent the
 # API still works normally; only the SPA routes return a helpful 404.
@@ -100,6 +99,7 @@ app.include_router(org.router)
 app.include_router(assets.router)
 app.include_router(assets.dashboard_router)
 app.include_router(allocations.router)
+app.include_router(bookings.router)
 app.include_router(notifications.router)
 app.include_router(maintenance.router)
 

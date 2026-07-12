@@ -1,4 +1,4 @@
-// Thin fetch wrapper around the FastAPI /auth/* backend.
+// Thin fetch wrapper around the FastAPI backend.
 // Base URL is "" so the same code works behind the Vite dev proxy (/auth -> :8000)
 // and when the built SPA is served same-origin by FastAPI.
 
@@ -29,6 +29,24 @@ async function request(method, path, { body, token } = {}) {
     err.status = res.status;
     err.data = data;
     throw err;
+  }
+  return data;
+}
+
+// Multipart upload (asset media). FastAPI expects a form field named "file".
+async function upload(path, file, token) {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(path, {
+    method: "POST",
+    headers: token ? { Authorization: "Bearer " + token } : {},
+    body: form,
+  });
+  let data = null;
+  try { data = await res.json(); } catch { data = null; }
+  if (!res.ok) {
+    const message = (data && (data.detail || data.message)) || `Upload failed (${res.status})`;
+    throw new Error(typeof message === "string" ? message : JSON.stringify(message));
   }
   return data;
 }
@@ -73,6 +91,7 @@ export const api = {
     create: (body, token) => request("POST", "/assets", { body, token }),
     get: (id, token) => request("GET", `/assets/${id}`, { token }),
     update: (id, body, token) => request("PATCH", `/assets/${id}`, { body, token }),
+    upload: (id, file, token) => upload(`/assets/${id}/media`, file, token),
   },
 
   dashboard: (token) => request("GET", "/dashboard", { token }),
@@ -112,5 +131,37 @@ export const api = {
     list: (token) => request("GET", "/notifications", { token }),
     read: (id, token) => request("POST", `/notifications/${id}/read`, { token }),
     readAll: (token) => request("POST", "/notifications/read-all", { token }),
+  },
+
+  // ----- Bookings (Screen 6) -----
+  bookings: {
+    list: (params = {}, token) => {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== "" && v != null) qs.set(k, v);
+      });
+      const q = qs.toString();
+      return request("GET", "/bookings" + (q ? "?" + q : ""), { token });
+    },
+    create: (body, token) => request("POST", "/bookings", { body, token }),
+    get: (id, token) => request("GET", `/bookings/${id}`, { token }),
+    reschedule: (id, body, token) =>
+      request("PATCH", `/bookings/${id}`, { body, token }),
+    cancel: (id, token) => request("POST", `/bookings/${id}/cancel`, { token }),
+  },
+
+  // ----- Maintenance (Screen 7) -----
+  maintenance: {
+    list: (params = {}, token) => {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== "" && v != null) qs.set(k, v);
+      });
+      const q = qs.toString();
+      return request("GET", "/maintenance" + (q ? "?" + q : ""), { token });
+    },
+    create: (body, token) => request("POST", "/maintenance", { body, token }),
+    update: (id, body, token) =>
+      request("PATCH", `/maintenance/${id}`, { body, token }),
   },
 };

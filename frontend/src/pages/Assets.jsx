@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import DashLayout from "../components/DashLayout";
 import { useAuth } from "../auth";
 import { api } from "../api";
@@ -14,6 +15,7 @@ const CONDITION_TONE = { new: "ok", good: "accent", fair: "warn", poor: "danger"
 export default function Assets() {
   const { access, user } = useAuth();
   const canManage = user?.role === "asset_manager" || user?.role === "admin";
+  const [searchParams] = useSearchParams();
 
   const [assets, setAssets] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -47,6 +49,11 @@ export default function Assets() {
   useEffect(() => {
     api.categories.list(access).then(setCategories).catch((e) => setNotice(e.message));
   }, [access]);
+
+  // Deep-link from the Dashboard "Register Asset" quick action.
+  useEffect(() => {
+    if (searchParams.get("new") === "1" && canManage) setShowForm(true);
+  }, [searchParams, canManage]);
 
   useEffect(() => { loadAssets(); /* eslint-disable-next-line */ }, [category, status, query, access]);
 

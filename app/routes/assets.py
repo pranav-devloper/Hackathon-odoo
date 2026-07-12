@@ -1,9 +1,10 @@
 """Asset + dashboard routes (Screens 2 & 4)."""
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, UploadFile, File
 from sqlalchemy.orm import Session
 
+from app.core.storage import save_upload
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.dependencies.roles import require_roles
@@ -91,6 +92,23 @@ def patch_asset(
     _: User = Depends(require_roles("asset_manager", "admin")),
 ):
     return serialize_asset(asset_service.update_asset(db, asset_id, data))
+
+
+@router.post("/{asset_id}/media", response_model=AssetOut)
+async def post_asset_media(
+    asset_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles("asset_manager", "admin")),
+):
+    """Attach a photo / document to an asset. Returns the updated asset."""
+    data = await file.read()
+    if not data:
+        from fastapi import HTTPException, status as _st
+        raise HTTPException(status_code=_st.HTTP_400_BAD_REQUEST, detail="Empty file")
+    path = save_upload(file.filename or "upload.bin", data)
+    asset = asset_service.update_asset(db, asset_id, AssetUpdate(image_path=path))
+    return serialize_asset(asset)
 
 
 @dashboard_router.get("/dashboard", response_model=DashboardKPIs)

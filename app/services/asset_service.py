@@ -6,12 +6,15 @@ from fastapi import HTTPException, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.models.asset import Asset
+from app.models.asset import Asset, LIFECYCLE_STATUSES
 from app.models.asset_category import AssetCategory
 from app.models.department import Department
 from app.models.allocation import Allocation
 from app.models.user import User
 from app.models.maintenance_ticket import MaintenanceTicket
+
+# Asset condition vocabulary (Screen 4).
+ALLOWED_CONDITIONS = {"new", "good", "fair", "poor"}
 
 
 def _next_tag(db: Session) -> str:
@@ -27,6 +30,11 @@ def register_asset(db: Session, data) -> Asset:
     if data.department_id is not None:
         if not db.query(Department).filter(Department.id == data.department_id).first():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Department not found")
+    if data.condition not in ALLOWED_CONDITIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid condition. Must be one of: {', '.join(sorted(ALLOWED_CONDITIONS))}",
+        )
     asset = Asset(
         asset_tag=_next_tag(db),
         name=data.name,
@@ -84,9 +92,21 @@ def get_asset(db: Session, asset_id: int) -> Asset:
 
 def update_asset(db: Session, asset_id: int, data) -> Asset:
     asset = get_asset(db, asset_id)
+    # exclude_unset => only fields the client actually sent are present, so we
+    # can apply each one directly (explicit nulls intentionally clear a value).
     for field, value in data.model_dump(exclude_unset=True).items():
         if field == "acquisition_cost" and value is not None:
             value = Decimal(str(value))
+        if field == "condition" and value not in ALLOWED_CONDITIONS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid condition. Must be one of: {', '.join(sorted(ALLOWED_CONDITIONS))}",
+            )
+        if field == "lifecycle_status" and value not in LIFECYCLE_STATUSES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid lifecycle status. Must be one of: {', '.join(LIFECYCLE_STATUSES)}",
+            )
         setattr(asset, field, value)
     db.commit()
     db.refresh(asset)

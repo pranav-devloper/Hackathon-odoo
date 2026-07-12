@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import DashLayout from "../components/DashLayout";
 import { useAuth } from "../auth";
 import { api } from "../api";
@@ -13,14 +14,9 @@ const KPI_DEFS = [
   { key: "upcoming_returns", label: "Upcoming Returns", tone: "ok" },
 ];
 
-const CRITICAL = [
-  { label: "Overdue Returns", count: 0, tone: "danger" },
-  { label: "Pending Transfers", count: 0, tone: "warn" },
-  { label: "Upcoming Returns", count: 0, tone: "accent" },
-];
-
 export default function Dashboard() {
-  const { access, user } = useAuth();
+  const { access } = useAuth();
+  const navigate = useNavigate();
   const [kpis, setKpis] = useState(null);
   const [status, setStatus] = useState("");
 
@@ -31,8 +27,6 @@ export default function Dashboard() {
       .catch((e) => active && setStatus(e.message));
     return () => { active = false; };
   }, [access]);
-
-  const act = (name) => setStatus(`${name} — coming soon (backend has auth only for now).`);
 
   return (
     <DashLayout>
@@ -61,9 +55,9 @@ export default function Dashboard() {
         <section className="panel">
           <h2>Quick Actions</h2>
           <div className="action-list">
-            <button className="btn" onClick={() => act("Register Asset")}>Register Asset</button>
-            <button className="btn" onClick={() => act("Book Resource")}>Book Resource</button>
-            <button className="btn" onClick={() => act("Raise Maintenance Request")}>Maintenance</button>
+            <button className="btn" onClick={() => navigate("/assets?new=1")}>Register Asset</button>
+            <button className="btn" onClick={() => navigate("/bookings?new=1")}>Book Resource</button>
+            <button className="btn" onClick={() => navigate("/maintenance?new=1")}>Maintenance</button>
           </div>
         </section>
 
@@ -71,19 +65,19 @@ export default function Dashboard() {
         <section className="panel">
           <h2>Critical Actions</h2>
           <ul className="critical-list">
-            <li onClick={() => act("Overdue Returns")}>
+            <li onClick={() => navigate("/allocations")}>
               <span>Overdue Returns</span>
               <span className={"pill " + (kpis && kpis.overdue_returns > 0 ? "danger" : "accent")}>
                 {kpis ? kpis.overdue_returns : 0}
               </span>
             </li>
-            <li onClick={() => act("Pending Transfers")}>
+            <li onClick={() => navigate("/allocations")}>
               <span>Pending Transfers</span>
               <span className={"pill " + (kpis && kpis.pending_transfers > 0 ? "warn" : "accent")}>
                 {kpis ? kpis.pending_transfers : 0}
               </span>
             </li>
-            <li onClick={() => act("Upcoming Returns")}>
+            <li onClick={() => navigate("/allocations")}>
               <span>Upcoming Returns</span>
               <span className="pill accent">{kpis ? kpis.upcoming_returns : 0}</span>
             </li>
