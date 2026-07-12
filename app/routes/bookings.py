@@ -1,4 +1,4 @@
-"""Booking routes (Screen 6): create, list, view, cancel."""
+"""Booking routes (Screen 6): create, list, view, reschedule, cancel."""
 from typing import Optional
 
 from fastapi import APIRouter, Depends
@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import User
-from app.schemas.booking import BookingCreate, BookingOut
+from app.schemas.booking import BookingCreate, BookingOut, BookingReschedule
 from app.services import booking_service
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
@@ -54,6 +54,8 @@ def get_bookings(
     db: Session = Depends(get_db),
     me: User = Depends(get_current_user),
 ):
+    # Lazy reminder sweep so the bell reflects upcoming slots.
+    booking_service.scan_reminders(db)
     user_id = me.id if mine else None
     return [serialize(db, b) for b in booking_service.list_bookings(
         db, asset_id=asset_id, status=status, user_id=user_id
@@ -67,6 +69,20 @@ def get_one(
     _: User = Depends(get_current_user),
 ):
     return serialize(db, booking_service.get_booking(db, booking_id))
+
+
+@router.patch("/{booking_id}", response_model=BookingOut)
+def reschedule_booking(
+    booking_id: int,
+    data: BookingReschedule,
+    db: Session = Depends(get_db),
+    me: User = Depends(get_current_user),
+):
+    """Reschedule an upcoming booking (requester or manager). Re-checks overlap."""
+    is_manager = bool(me.role and me.role.name in MANAGER_ROLES)
+    return serialize(db, booking_service.reschedule_booking(
+        db, booking_id, me.id, is_manager, data.start_time, data.end_time
+    ))
 
 
 @router.post("/{booking_id}/cancel", response_model=BookingOut)

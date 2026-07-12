@@ -12,6 +12,11 @@ class BookingCreate(BaseModel):
     purpose: Optional[str] = None
 
 
+class BookingReschedule(BaseModel):
+    start_time: datetime
+    end_time: datetime
+
+
 class BookingOut(BaseModel):
     id: int
     asset_id: int
