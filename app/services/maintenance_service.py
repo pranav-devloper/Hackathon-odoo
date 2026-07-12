@@ -2,7 +2,7 @@
 
 Auto status flips on the asset:
   approved  -> asset.lifecycle_status = under_maintenance
-  resolved  -> asset.lifecycle_status = available
+  resolved  -> asset.lifecycle_status = available/allocated based on active allocation
 Every transition is also written to the Activity Log.
 """
 from datetime import datetime, timezone
@@ -10,10 +10,10 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.models.maintenance_ticket import MaintenanceTicket
 from app.models.asset import Asset
+from app.models.maintenance_ticket import MaintenanceTicket
 from app.models.user import User
-from app.services import notification_service, activity_service
+from app.services import activity_service, allocation_service, notification_service
 
 
 MANAGER_ROLES = ("asset_manager", "department_head", "admin")
@@ -32,6 +32,11 @@ def _get(db: Session, ticket_id: int) -> MaintenanceTicket:
 
 def _is_manager(user: User) -> bool:
     return bool(user.role and user.role.name in MANAGER_ROLES)
+
+
+def _restore_asset_status(db: Session, asset: Asset) -> None:
+    held = allocation_service.active_allocation_for_asset(db, asset.id) is not None
+    asset.lifecycle_status = "allocated" if held else "available"
 
 
 def raise_request(
@@ -147,7 +152,7 @@ def resolve(db: Session, ticket_id: int, approver: User) -> MaintenanceTicket:
 
     asset = db.query(Asset).filter(Asset.id == t.asset_id).first()
     if asset:
-        asset.lifecycle_status = "available"
+        _restore_asset_status(db, asset)
 
     db.commit()
     db.refresh(t)

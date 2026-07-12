@@ -6,6 +6,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from sqlalchemy import inspect as sa_inspect, text
 
 from app.config import settings
 from app.database import Base, SessionLocal, engine
@@ -28,6 +30,9 @@ from app.routes import activity
 _FRONTEND_DIST = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
 )
+
+# Uploaded asset photos / documents, served statically at /media.
+MEDIA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "media"))
 
 
 def seed_roles() -> None:
@@ -54,35 +59,32 @@ def seed_roles() -> None:
         db.close()
 
 
-def migrate() -> None:
-    """Apply additive schema changes to existing dev databases.
-
-    `create_all` only creates missing tables, so columns added to an existing
-    table (e.g. MaintenanceTicket) must be added with guarded ALTERs. Safe to
-    re-run: each column is only added if absent.
-    """
-    from sqlalchemy import inspect, text
+def migrate_schema() -> None:
+    """Apply additive schema changes for existing dev databases."""
+    inspector = sa_inspect(engine)
+    if not inspector.has_table("maintenance_tickets"):
+        return
 
     alters = [
-        ("maintenance_tickets", "rejected_reason", "TEXT"),
-        ("maintenance_tickets", "resolved_at", "DATETIME"),
-        ("maintenance_tickets", "assigned_at", "DATETIME"),
-        ("maintenance_tickets", "approved_by", "INTEGER"),
-        ("maintenance_tickets", "photo_path", "VARCHAR(512)"),
+        ("rejected_reason", "TEXT"),
+        ("resolved_at", "DATETIME"),
+        ("assigned_at", "DATETIME"),
+        ("approved_by", "INTEGER"),
+        ("photo_path", "VARCHAR(512)"),
+        ("resolution", "TEXT"),
     ]
-    inspector = inspect(engine)
     existing = {c["name"] for c in inspector.get_columns("maintenance_tickets")}
     with engine.begin() as conn:
-        for table, col, ddl in alters:
+        for col, ddl in alters:
             if col not in existing:
-                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}"))
+                conn.execute(text(f"ALTER TABLE maintenance_tickets ADD COLUMN {col} {ddl}"))
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Create tables and seed roles on startup (create_all strategy).
     Base.metadata.create_all(bind=engine)
-    migrate()
+    migrate_schema()
     seed_roles()
     yield
 
@@ -108,6 +110,10 @@ app.include_router(maintenance.router)
 app.include_router(audits.router)
 app.include_router(reports.router)
 app.include_router(activity.router)
+
+# Uploaded asset media (photos / documents), served read-only at /media/*.
+os.makedirs(MEDIA_DIR, exist_ok=True)
+app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
 
 
 @app.get("/", tags=["root"])

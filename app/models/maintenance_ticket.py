@@ -6,7 +6,6 @@ On approval the asset flips to under_maintenance; on resolution it returns to av
 from datetime import datetime, timezone
 
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
-
 from app.database import Base
 
 
@@ -27,6 +26,7 @@ class MaintenanceTicket(Base):
 
     assigned_tech = Column(String(255), nullable=True)
     rejected_reason = Column(Text, nullable=True)
+    resolution = Column(Text, nullable=True)
     photo_path = Column(String(512), nullable=True)  # optional attached photo (URL/path)
 
     approved_by = Column(Integer, ForeignKey("users.id"), nullable=True)

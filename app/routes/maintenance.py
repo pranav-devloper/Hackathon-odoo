@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.dependencies.roles import require_roles
-from app.models.user import User
 from app.models.asset import Asset
+from app.models.user import User
 from app.schemas.maintenance import (
     MaintenanceCreate, MaintenanceReject, MaintenanceAssign, MaintenanceOut,
 )
@@ -35,7 +35,7 @@ def serialize(db: Session, t) -> MaintenanceOut:
         reporter_id=t.reporter_id, reporter_name=_name(db, t.reporter_id),
         issue=t.issue, priority=t.priority, status=t.status,
         assigned_tech=t.assigned_tech, rejected_reason=t.rejected_reason,
-        photo_path=t.photo_path, approved_by=t.approved_by,
+        resolution=t.resolution, photo_path=t.photo_path, approved_by=t.approved_by,
         assigned_at=t.assigned_at, resolved_at=t.resolved_at,
         created_at=t.created_at,
     )

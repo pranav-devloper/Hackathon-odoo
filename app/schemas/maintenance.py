@@ -32,6 +32,7 @@ class MaintenanceOut(BaseModel):
     status: str
     assigned_tech: Optional[str] = None
     rejected_reason: Optional[str] = None
+    resolution: Optional[str] = None
     photo_path: Optional[str] = None
     approved_by: Optional[int] = None
     assigned_at: Optional[datetime] = None
