@@ -1,5 +1,6 @@
 """JWT creation and decoding for access and refresh tokens."""
 from datetime import datetime, timedelta, timezone
+import uuid
 
 import jwt
 
@@ -30,6 +31,11 @@ def create_refresh_token(user_id: int) -> str:
     payload = {
         "sub": str(user_id),
         "type": "refresh",
+        # Unique id so two refresh tokens issued for the same user at the same
+        # instant encode to *different* JWT strings. Without this, refresh-token
+        # rotation would try to insert a token identical to the (revoked) old
+        # one and hit the UNIQUE constraint on refresh_tokens.token.
+        "jti": str(uuid.uuid4()),
         "exp": expire,
     }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
