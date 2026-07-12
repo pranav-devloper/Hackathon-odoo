@@ -18,6 +18,10 @@ from app.routes import assets
 from app.routes import allocations
 from app.routes import notifications
 from app.routes import bookings
+from app.routes import maintenance
+from app.routes import audits
+from app.routes import reports
+from app.routes import activity
 
 # Built React SPA output (after `npm run build` in frontend/). When absent the
 # API still works normally; only the SPA routes return a helpful 404.
@@ -50,10 +54,35 @@ def seed_roles() -> None:
         db.close()
 
 
+def migrate() -> None:
+    """Apply additive schema changes to existing dev databases.
+
+    `create_all` only creates missing tables, so columns added to an existing
+    table (e.g. MaintenanceTicket) must be added with guarded ALTERs. Safe to
+    re-run: each column is only added if absent.
+    """
+    from sqlalchemy import inspect, text
+
+    alters = [
+        ("maintenance_tickets", "rejected_reason", "TEXT"),
+        ("maintenance_tickets", "resolved_at", "DATETIME"),
+        ("maintenance_tickets", "assigned_at", "DATETIME"),
+        ("maintenance_tickets", "approved_by", "INTEGER"),
+        ("maintenance_tickets", "photo_path", "VARCHAR(512)"),
+    ]
+    inspector = inspect(engine)
+    existing = {c["name"] for c in inspector.get_columns("maintenance_tickets")}
+    with engine.begin() as conn:
+        for table, col, ddl in alters:
+            if col not in existing:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}"))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Create tables and seed roles on startup (create_all strategy).
     Base.metadata.create_all(bind=engine)
+    migrate()
     seed_roles()
     yield
 
@@ -75,6 +104,10 @@ app.include_router(assets.dashboard_router)
 app.include_router(allocations.router)
 app.include_router(notifications.router)
 app.include_router(bookings.router)
+app.include_router(maintenance.router)
+app.include_router(audits.router)
+app.include_router(reports.router)
+app.include_router(activity.router)
 
 
 @app.get("/", tags=["root"])

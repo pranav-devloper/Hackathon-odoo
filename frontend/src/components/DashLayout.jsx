@@ -8,7 +8,9 @@ const NAV_ITEMS = [
   { label: "Allocations", to: "/allocations" },
   { label: "Bookings", to: "/bookings" },
   { label: "Maintenance", to: "/maintenance" },
+  { label: "Audits", to: "/audits" },
   { label: "Reports", to: "/reports" },
+  { label: "Activity", to: "/activity" },
   { label: "Settings", to: "/settings" },
 ];
 
