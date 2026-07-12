@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies.roles import require_role
+from app.dependencies.roles import require_role, require_roles
 from app.models.user import User
 from app.schemas.org import (
     DepartmentCreate, DepartmentOut, DepartmentUpdate,
@@ -71,7 +71,9 @@ def patch_category(cat_id: int, data: CategoryUpdate, db: Session = Depends(get_
 
 # ---------- Employees (directory + role assignment) ----------
 @router.get("/employees", response_model=list[EmployeeOut])
-def get_employees(db: Session = Depends(get_db), _=Depends(require_role("admin"))):
+def get_employees(db: Session = Depends(get_db), _=Depends(require_roles("admin", "asset_manager", "department_head"))):
+    # Viewing the directory is open to managers (needed for the allocation /
+    # transfer holder picker); only role ASSIGNMENT below stays admin-only.
     return [serialize_employee(u) for u in employee_service.list_employees(db)]
 
 

@@ -1,21 +1,58 @@
 """Email delivery.
 
-In this project email is sent to the *console* (DEV mode) so the API works
-end-to-end without real SMTP credentials. Swap `send_email` for an SMTP
-backend (e.g. FastAPI-Mail) in production.
+Uses SMTP when configured (SMTP_HOST + SMTP_USER set in the environment). When
+no SMTP credentials are present it falls back to printing the message to the
+server console (DEV mode) so the API still works end-to-end with zero setup.
+
+Email sends are best-effort: a failure (bad creds, network) is logged and never
+breaks the calling flow (signup / forgot-password still succeed).
 """
+import logging
+import smtplib
+from email.message import EmailMessage
+
 from app.config import settings
 
+log = logging.getLogger("email")
 
-def send_email(to: str, subject: str, body: str) -> None:
-    # DEV: print the "email" to stdout so codes/links are visible when testing.
-    print("\n" + "=" * 64, flush=True)
-    print("  [DEV EMAIL]", flush=True)
-    print(f"  To:      {to}", flush=True)
-    print(f"  Subject: {subject}", flush=True)
-    print("-" * 64, flush=True)
-    print(body, flush=True)
-    print("=" * 64 + "\n", flush=True)
+
+def _smtp_configured() -> bool:
+    return bool(settings.SMTP_HOST and settings.SMTP_USER)
+
+
+def send_email(to: str, subject: str, body: str) -> bool:
+    if not _smtp_configured():
+        # DEV: print the "email" to stdout so codes/links are visible while testing.
+        print("\n" + "=" * 64, flush=True)
+        print("  [DEV EMAIL — SMTP not configured, printing instead]", flush=True)
+        print(f"  To:      {to}", flush=True)
+        print(f"  Subject: {subject}", flush=True)
+        print("-" * 64, flush=True)
+        print(body, flush=True)
+        print("=" * 64 + "\n", flush=True)
+        return False
+
+    msg = EmailMessage()
+    msg["From"] = settings.EMAIL_FROM
+    msg["To"] = to
+    msg["Subject"] = subject
+    msg.set_content(body)
+
+    try:
+        if settings.SMTP_USE_SSL:
+            with smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as s:
+                s.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+                s.send_message(msg)
+        else:
+            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as s:
+                s.starttls()
+                s.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+                s.send_message(msg)
+        log.info("Email sent to %s (%s)", to, subject)
+        return True
+    except Exception as e:  # noqa: BLE001 — delivery must never break the flow
+        log.error("Failed to send email to %s (%s): %s", to, subject, e)
+        return False
 
 
 def send_verification_email(email: str, full_name: str, code: str) -> None:
