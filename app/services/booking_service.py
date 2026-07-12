@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.asset import Asset
 from app.models.booking import Booking
 from app.models.user import User
+from app.services import activity_service
 
 
 def _utcnow() -> datetime:
@@ -64,6 +65,8 @@ def create_booking(
     db.add(booking)
     db.commit()
     db.refresh(booking)
+    activity_service.log_activity(db, user_id, "booking_created", "booking", booking.id,
+                                  f"{asset.asset_tag if asset else 'asset'} {start_time}–{end_time}")
     return booking
 
 
@@ -93,7 +96,7 @@ def get_booking(db: Session, booking_id: int) -> Booking:
     return booking
 
 
-def cancel_booking(db: Session, booking_id: int, user_id: int, is_manager: bool) -> Booking:
+def cancel_booking(db: Session, booking_id: int, user_id: int, is_manager: bool, actor_id: int | None = None) -> Booking:
     booking = get_booking(db, booking_id)
     if booking.status == "cancelled":
         return booking
@@ -105,6 +108,7 @@ def cancel_booking(db: Session, booking_id: int, user_id: int, is_manager: bool)
     booking.status = "cancelled"
     db.commit()
     db.refresh(booking)
+    activity_service.log_activity(db, actor_id if actor_id is not None else user_id, "booking_cancelled", "booking", booking.id)
     return booking
 
 

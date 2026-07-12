@@ -22,7 +22,7 @@ def active_allocation_for_asset(db: Session, asset_id: int) -> Allocation | None
     )
 
 
-def allocate(db: Session, asset_id: int, holder_user_id: int, expected_return_date, allocated_by: int) -> Allocation:
+def allocate(db: Session, asset_id: int, holder_user_id: int, expected_return_date, allocated_by: int) -> Allocation:  # noqa: E501
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
@@ -65,10 +65,12 @@ def allocate(db: Session, asset_id: int, holder_user_id: int, expected_return_da
     due = f" (due {expected_return_date})" if expected_return_date else ""
     notification_service.notify(db, holder_user_id, "asset_assigned",
                                 f"Asset {asset.asset_tag} ({asset.name}) has been assigned to you{due}.")
+    activity_service.log_activity(db, allocated_by, "asset_allocated", "asset", asset.id,
+                                  f"{asset.asset_tag} -> user {holder_user_id}")
     return alloc
 
 
-def return_allocation(db: Session, allocation_id: int, condition_notes: str | None) -> Allocation:
+def return_allocation(db: Session, allocation_id: int, condition_notes: str | None, actor_id: int | None = None) -> Allocation:
     alloc = db.query(Allocation).filter(Allocation.id == allocation_id).first()
     if not alloc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Allocation not found")
@@ -89,6 +91,8 @@ def return_allocation(db: Session, allocation_id: int, condition_notes: str | No
     if asset:
         notification_service.notify(db, alloc.holder_user_id, "asset_returned",
                                     f"Return recorded for {asset.asset_tag} ({asset.name}). Status is now Available.")
+    activity_service.log_activity(db, actor_id, "asset_returned", "asset", alloc.asset_id,
+                                  asset.asset_tag if asset else None)
     return alloc
 
 
